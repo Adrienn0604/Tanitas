@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Algoritmusok Animációkkal</title>
+    
+    <!-- Skulpt importálása a Python kódok böngészőben történő futtatásához -->
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/skulpt-stdlib.js"></script>
+
+    <style>
+        :root {
+            --bg-dark: #1e1e2f;
+            --panel-bg: #2a2a40;
+            --primary: #4ade80;
+            --danger: #f87171;
+            --text-light: #f8fafc;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', sans-serif; }
+        body { background-color: var(--bg-dark); color: var(--text-light); display: flex; height: 100vh; overflow: hidden; }
+
+        /* Sidebar & Layout */
+        .sidebar { width: 250px; background-color: #151522; padding: 20px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto; }
+        .sidebar h2 { font-size: 1.2rem; margin-bottom: 20px; color: var(--primary); text-align: center; }
+        .menu-btn { background: var(--panel-bg); color: var(--text-light); border: none; padding: 12px; border-radius: 8px; cursor: pointer; text-align: left; transition: 0.2s; }
+        .menu-btn:hover { background: #3f3f5a; }
+        .menu-btn.active { background: var(--primary); color: #000; font-weight: bold; }
+        .main-content { flex: 1; padding: 30px; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .card { background-color: var(--panel-bg); padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        h1 { color: #60a5fa; margin-bottom: 10px; }
+        .story { font-size: 1.1rem; line-height: 1.5; color: #cbd5e1; margin-bottom: 15px; white-space: pre-wrap; }
+        .cses-link { color: var(--primary); text-decoration: none; font-size: 0.9rem; display: block; margin-bottom: 15px; }
+
+        /* Animation Box */
+        .anim-container {
+            width: 100%; height: 260px; background: #0f172a; border-radius: 8px; margin-bottom: 15px;
+            display: flex; justify-content: center; align-items: center; position: relative; overflow: hidden; border: 1px solid #334155;
+        }
+        .btn-start-anim { background: #8b5cf6; color: white; border: none; padding: 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; margin-bottom: 15px; font-size: 1.1rem; }
+        .btn-start-anim:hover { background: #7c3aed; }
+
+        /* Animation Elements */
+        .bar { width: 40px; background: #3b82f6; margin: 0 5px; transition: 0.3s; text-align: center; color: white; font-weight: bold; border-radius: 4px 4px 0 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 5px; }
+        .coin { width: 45px; height: 45px; background: #fbbf24; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: black; font-weight: bold; margin: 5px; opacity: 0; transform: scale(0); transition: 0.3s; box-shadow: inset -2px -2px 5px rgba(0,0,0,0.3); }
+        .node { position: absolute; background: #3b82f6; padding: 10px; border-radius: 50%; text-align: center; font-size: 12px; transition: 0.5s; font-weight: bold; box-shadow: 0 0 10px rgba(0,0,0,0.5); }
+        .peg { width: 100px; height: 140px; border-bottom: 8px solid #64748b; display: flex; flex-direction: column-reverse; align-items: center; margin: 0 15px; }
+        .disk { height: 22px; border-radius: 11px; transition: 0.4s; margin-bottom: 2px; border: 1px solid rgba(0,0,0,0.2); }
+
+        /* Quiz Buttons */
+        .quiz-container { display: flex; flex-direction: column; gap: 10px; }
+        .quiz-btn { background: #334155; color: white; border: 2px solid transparent; padding: 15px; border-radius: 8px; cursor: pointer; text-align: left; font-size: 1rem; transition: 0.2s; }
+        .quiz-btn:hover { border-color: #64748b; }
+        .feedback { margin-top: 15px; padding: 15px; border-radius: 8px; display: none; font-weight: bold; }
+        .feedback.success { background-color: rgba(74, 222, 128, 0.2); border: 1px solid var(--primary); color: var(--primary); display: block; }
+        .feedback.error { background-color: rgba(248, 113, 113, 0.2); border: 1px solid var(--danger); color: var(--danger); display: block; }
+
+        /* Editor */
+        .editor-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .editor-actions button { background: #3b82f6; color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; margin-left: 10px; }
+        textarea { width: 100%; height: 350px; background: #0f172a; color: #38bdf8; font-family: monospace; font-size: 14px; padding: 15px; border: 1px solid #334155; border-radius: 8px; resize: vertical; }
+        .terminal { background: #000; color: #4ade80; font-family: monospace; padding: 15px; border-radius: 8px; min-height: 100px; margin-top: 10px; white-space: pre-wrap; border: 1px solid #334155; }
+        #hanoi-controls { display: none; margin-bottom: 15px; }
+        select { padding: 5px; border-radius: 5px; background: #334155; color: white; border: none; font-size: 1rem; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar" id="sidebar">
+        <h2>Algoritmusok</h2>
+    </div>
+
+    <div class="main-content">
+        <div class="card">
+            <h1 id="title">Cím</h1>
+            <p class="story" id="story">Történet...</p>
+            <a id="cses" class="cses-link" href="#" target="_blank">🔗 CSES Kapcsolódás</a>
+            
+            <div id="hanoi-controls">
+                <label for="korongok">Korongok száma: </label>
+
+                <select id="korongok" onchange="updateHanoi()">
+                    <option value="2">2</option>
+                    <option value="3" selected>3</option>
+                    <option value="4">4</option>
+                </select>
+            </div>
+
+            <button class="btn-start-anim" onclick="startAnimation()">🎬 Animáció Indítása</button>
+            <div class="anim-container" id="anim-container">
+                <div style="color:gray;">Kattints az Animáció Indítása gombra!</div>
+            </div>
+
+            <div class="quiz-container" id="quiz-container"></div>
+            <div id="feedback" class="feedback"></div>
+        </div>
+
+        <div class="card">
+            <div class="editor-header">
+                <h3>Python Kód</h3>
+                <div class="editor-actions">
+                    <button onclick="copyCode()">📋 Másolás</button>
+                    <button onclick="runCode()" style="background: var(--primary); color: black;">▶ Futtatás</button>
+                </div>
+            </div>
+            <textarea id="code-editor" spellcheck="false"></textarea>
+            <h3 style="margin-top: 20px;">Konzol kimenet:</h3>
+            <div class="terminal" id="terminal">A kimenet itt jelenik meg...</div>
+        </div>
+    </div>
+
+    <script>
+        const sleep = ms => new Promise(r => setTimeout(r, ms));
+        let isAnimating = false;
+        let animationId = 0; 
+
+        const topics = {
+            sort: {
+                title: "Buborékrendezés - Varázslótanonc Vizsgája",
+                story: "A buborékrendezés egy népszerű rendező algoritmus. Úgy dolgozik, hogy egymás után felcseréli azokat a szomszédos elemeket, amelyek rossz sorrendben vannak.\n\nFeladat: A bájitaltan teremben a professzor összekeverte a fiolákat. Rendezd őket varázserő szerint!",
+                csesLink: "https://cses.fi/problemset/task/1621",
+                good: "Kettesével hasonlítom össze őket, és ha a bal oldali nagyobb, megcserélem. Addig ismétlem, amíg minden a helyére nem kerül.",
+                bad: "Csak egyszer végigmegyek a soron, és a legnagyobbat a végére teszem.",
+                goodMsg: "✨ Szuper! Ez a Buborékrendezés. Nézd meg az animáción, hogyan 'buborékol' a legnagyobb elem a végére!",
+                badMsg: "💥 BUMM! A bájital felrobbant! Ha csak egyszer mész végig, a többi összekeverve marad.",
+                helpText: "Segítség:\n1. Hasonlítsd össze a szomszédokat.\n2. Cseréld meg őket, ha kell.\n3. Ismételd, míg rendezett nem lesz.",
+                code: [
+                    "def buborek(fiolak):",
+                    "  n = len(fiolak)",
+                    "  for i in range(n):",
+                    "    for j in range(0, n-i-1):",
+                    "      if fiolak[j] > fiolak[j+1]:",
+                    "        fiolak[j], fiolak[j+1] = fiolak[j+1], fiolak[j]",
+                    "  return fiolak",
+                    "",
+                    "print('Rendezett:', buborek([5, 2, 9, 1, 6]))"
+                ].join('\n')
+            },
+            greedy: {
+                title: "Mohó Algoritmus - A Sárkány Kincse",
+                story: "A mohó algoritmus mindig az adott lépésben optimálisnak látszó választást teszi. Vagyis, a lokális optimumot választja abban a reményben, hogy ez globális optimumhoz fog majd vezetni. Nem mindig ad optimális megoldást, azonban sok probléma megoldható mohó algoritmussal.\n\nFeladat: Legyőzted a sárkányt, 387 értékű aranyat kell hazavinned a lehető legkevesebb érmével.\nRendelkezésedre álló érmék: (200, 100, 50, 20, 10, 5, 2, 1).\n",
+                csesLink: "https://cses.fi/problemset/task/1090",
+                good: "Mindig a lehető legnagyobb érmét választom, ami még belefér az összegbe.",
+                bad: "Elkezdem telepakolni a táskát az 1 és 2 értékű aranyakkal.",
+                goodMsg: "💰 Helyes! Indítsd el az animációt és nézd meg a hátizsák töltődését!",
+                badMsg: "🎒 A hátizsákod kiszakadt az aprótól! A legnagyobbal kellett volna kezdened.",
+                helpText: "Segítség:\n1. Mindig a legnagyobb érmét válaszd.\n2. Vond ki az értékét az összegből.\n3. Folytasd, amíg 0 nem lesz.",
+                code: [
+                    "def moho(osszeg):",
+                    "  ermek = [200, 100, 50, 20, 10, 5, 2, 1]",
+                    "  valasztott = []",
+                    "  for erme in ermek:",
+                    "    while osszeg >= erme:",
+                    "      osszeg -= erme",
+                    "      valasztott.append(erme)",
+                    "  return valasztott",
+                    "",
+                    "print('Érmék:', moho(387))"
+                ].join('\n')
+            },
+            bfs: {
+                title: "Szélességi keresés - Menekülés a Barlangból",
+                story: "A szélességi keresés az egyik legegyszerűbb gráfbejáró algoritmus. A kezdőcsúcsból indulva rétegenként térképezi fel a szomszédos, még nem látogatott csúcsokat, így megtalálva a legrövidebb utat.\n\nFeladat: Ég a barlang! Meg kell találnod a legrövidebb utat 'A' pontból a 'Kijárat' csúcsba, mielőtt a füst utolér.",
+                csesLink: "https://cses.fi/problemset/task/1193",
+                good: "Minden lépésnél megvizsgálom a szomszédos, még nem látogatott járatokat és rétegenként haladok kifelé, amíg meg nem találom a kijáratot.",
+                bad: "Kiválasztok egy irányt, és addig megyek rajta, amíg zsákutcába nem érek.",
+                goodMsg: "🛡️ Megmenekültél! Az animáció megmutatja a barlang csomópontjainak réteges (hullámszerű) bejárását.",
+                badMsg: "🔥 Utolért a füst! Ezzel a módszerrel hatalmas kerülőt tehetsz.",
+                helpText: "Segítség:\n1. Indulj a kezdőpontból.\n2. Vizsgáld meg a szomszédokat rétegenként.\n3. Jegyezd meg, hol jártál már.",
+                code: [
+                    "from collections import deque",
+                    "",
+                    "def bfs_kijarat_kereso(graf, start, cel):",
+                    "    sor = deque([(start, [start])])  # A sor tárolja az aktuális csúcsot és az odavezető utat",
+                    "    latogatott = set([start])",
+                    "",
+                    "    while sor:",
+                    "        aktualis, ut = sor.popleft()",
+                    "        if aktualis == cel:",
+                    "            return ut  # Megvan a legrövidebb út!",
+                    "",
+                    "        for szomszed in graf[aktualis]:",
+                    "            if szomszed not in latogatott:",
+                    "                latogatott.add(szomszed)",
+                    "                sor.append((szomszed, ut + [szomszed]))",
+                    "    return \"Nincs kijárat!\"",
+                    "",
+                    "barlang = {'A': ['B', 'C'], 'B': ['A', 'D', 'E'], 'C': ['A', 'F'], 'D': ['B'], 'E': ['B', 'Kijárat'], 'F': ['C'],",
+                    "           'Kijárat': ['E']}",
+                    "print(\"A legrovidebb menekulesi ut:\", bfs_kijarat_kereso(barlang, 'A', 'Kijárat'))"
+                ].join('\n')
+            },
+            dfs: {
+                title: "Mélységi keresés - Útvesztő Térképészete",
+                story: "A mélységi keresés stratégiája, hogy a gráfban a lehető legmélyebben keressünk. Ha zsákutcába érünk, az algoritmus visszalép a legutóbbi elágazásig.\n\nFeladat: Térképezz fel egy rejtélyes erdőt (ahol titkos átjárók is vannak). Jelöld meg, hol jártál már!",
+                csesLink: "https://cses.fi/problemset/task/1666",
+                good: "Elindulok a legmélyebb pontig, megjelölöm, és visszalépek, ha már látogatott csúcsba ütközöm.",
+                bad: "Csak megyek előre. Nem jelölöm meg az utat.",
+                goodMsg: "🗺️ Remek! Nézd az animációt: piros a haladás előre, a sötétszürke pedig a visszalépés.",
+                badMsg: "🌀 Örökre elvesztél! Végtelen körbe kerültél a megjelölés hiánya miatt.",
+                helpText: "Segítség:\n1. Menj mélyre egy úton.\n2. Ha zsákutcába érsz, lépj vissza.\n3. Próbáld meg a következő irányt.",
+                code: [
+                    "def dfs_terkepeszet(graf, csucs, latogatott=None):",
+                    "    if latogatott is None:",
+                    "        latogatott = set()",
+                    "",
+                    "    latogatott.add(csucs)",
+                    "    print(f\"Felfedezve: {csucs}\")",
+                    "",
+                    "    for szomszed in graf[csucs]:",
+                    "        if szomszed not in latogatott:",
+                    "            dfs_terkepeszet(graf, szomszed, latogatott)",
+                    "",
+                    "erdo_graf = {1: [2, 3], 2: [1, 4], 3: [1], 4: [2, 1]}  # Az 1-es és 4-es között is van egy titkos út",
+                    "print(\"A felfedezes sorrendje:\")",
+                    "dfs_terkepeszet(erdo_graf, 1)"
+                ].join('\n')
+            },
+            dijkstra: {
+                title: "Dijkstra algoritmus - Csillagközi Szállítás",
+                story: "Dijkstra algoritmusa az adott kezdő csúcsból induló legrövidebb utak problémáját egy élsúlyozott gráfban oldja meg. A Dijkstra-algoritmus nyilvántartja a bolygók eddigi legrövidebb távolságát a kezdőponttól.\n\nFeladat: Utazz el a Marsra a legolcsóbb féreglyukakon keresztül! (Költségek az úton számítódnak).",
+                csesLink: "https://cses.fi/problemset/task/1671",
+                good: "Azt a bolygót vizsgálom tovább, ahová eddig a legolcsóbb volt eljutni a kezdőpontból.",
+                bad: "Mindig a lokálisan legolcsóbb féreglyukba ugrom.",
+                goodMsg: "🚀 Indítsd az animációt: Először a Föld (0), majd az X_bolygó (1), végül az Y_bolygó frissíti a Mars elérési költségét az optimális 15-re.",
+                badMsg: "🛸 Kifogytál az üzemanyagból! Beleugrottál egy csapdába.",
+                helpText: "Segítség:\n1. Tartsd nyilván a legolcsóbb utakat.\n2. Válaszd a legkisebb költségű pontot.\n3. Frissítsd a szomszédok távolságát.",
+                code: [
+                    "def dijkstra_ur_utazas(graf, start):",
+                    "    tavolsagok = {bolygo: float('inf') for bolygo in graf}",
+                    "    tavolsagok[start] = 0",
+                    "    latogatott = set()",
+                    "",
+                    "    while len(latogatott) < len(graf):",
+                    "        # Keressük a legkisebb távolságú, még nem látogatott bolygót",
+                    "        aktualis = min((b for b in graf if b not in latogatott), key=lambda x: tavolsagok[x])",
+                    "        latogatott.add(aktualis)",
+                    "",
+                    "        for szomszed, ar in graf[aktualis].items():",
+                    "            if tavolsagok[aktualis] + ar < tavolsagok[szomszed]:",
+                    "                tavolsagok[szomszed] = tavolsagok[aktualis] + ar",
+                    "",
+                    "    return tavolsagok",
+                    "",
+                    "galaxis = {",
+                    "    'Föld': {'X_bolygó': 1, 'Y_bolygó': 10},",
+                    "    'X_bolygó': {'Mars': 100},",
+                    "    'Y_bolygó': {'Mars': 5},",
+                    "    'Mars': {}",
+                    "}",
+                    "print(\"Uzemenyag igeny a Foldrol:\", dijkstra_ur_utazas(galaxis, 'Föld'))"
+                ].join('\n')
+            },
+            hanoi: {
+                title: "Hanoi Tornyai",
+                story: "A Hanoi tornyai egy klasszikus matematikai logikai játék. Három rúd és különböző méretű, egymásra helyezhető korongok kezdetben az egyik rúdon vannak méret szerint csökkenő sorrendben, a legkisebb legfelül. A cél az összes korongot átpakolni az első rúdról a harmadik rúdra.\nSzabályok: Egyszerre csak egy korong mozgatható. Minden lépésben egy rúd legfelső korongját szabad levenni és egy másik rúd tetejre vagy üres rúdra áttenni. Nagyobb korong soha nem tehető kisebb korong tetejére.\n\nFeladat: Mozgasd át a kristályokat a 3. oszlopra. Ne feledd, egyszerre csak egyet mozgathatsz és nagyobb nem mehet a kisebbre!\n",
+                csesLink: "https://cses.fi/problemset/task/2165",
+                good: "Rekurzió! n-1 darab a segédre, a legnagyobb a célra, majd n-1 a célra.",
+                bad: "Megfogom a legalsót és az egészet átrakom egyszerre.",
+                goodMsg: "🪄 Tökéletes. Állítsd be a korongok számát és indítsd az animációt!",
+                badMsg: "⚡ A kristályok darabokra törtek!",
+                helpText: "Segítség:\n1. Rakd az n-1 korongot a segédre.\n2. Majd a legnagyobbat a célra.\n3. Végül az n-1-et a célra.",
+                code: [
+                    "def hanoi(n, honnan, hova, seged):",
+                    "  if n == 1:",
+                    "    print('Mozgasd: ' + honnan + ' -> ' + hova)",
+                    "    return",
+                    "  hanoi(n-1, honnan, seged, hova)",
+                    "  print('Mozgasd: ' + honnan + ' -> ' + hova)",
+                    "  hanoi(n-1, seged, hova, honnan)",
+                    "",
+                    "n = 3",
+                    "hanoi(n, 'A', 'C', 'B')"
+                ].join('\n')
+            }
+        };
+
+        let currentTopicId = "sort";
+
+        window.onload = () => {
+            const sidebar = document.getElementById("sidebar");
+            Object.keys(topics).forEach(key => {
+                const container = document.createElement("div");
+                container.style.display = "flex";
+                container.style.gap = "5px";
+                
+                const btn = document.createElement("button");
+                btn.className = "menu-btn";
+                btn.style.flex = "1";
+                btn.innerText = topics[key].title.split(" - ")[0];
+                btn.onclick = () => loadTopic(key);
+                btn.id = "btn-" + key;
+                
+                const helpBtn = document.createElement("button");
+                helpBtn.className = "menu-btn";
+                helpBtn.innerText = "Segítség";
+                helpBtn.style.padding = "12px 15px";
+                
+                helpBtn.onclick = () => alert(topics[key].helpText);
+                helpBtn.title = topics[key].helpText;
+                
+                container.appendChild(btn);
+                container.appendChild(helpBtn);
+                sidebar.appendChild(container);
+            });
+            loadTopic("sort");
+        };
+
+        function loadTopic(id) {
+            isAnimating = false; 
+            animationId++; 
+            currentTopicId = id;
+            const topic = topics[id];
+            
+            document.querySelectorAll(".menu-btn").forEach(btn => btn.classList.remove("active"));
+            const activeBtn = document.getElementById("btn-" + id);
+            if (activeBtn) activeBtn.classList.add("active");
+
+            document.getElementById("title").innerText = topic.title;
+            document.getElementById("story").innerText = topic.story;
+            document.getElementById("cses").href = topic.csesLink;
+            document.getElementById("hanoi-controls").style.display = id === "hanoi" ? "block" : "none";
+            document.getElementById("code-editor").value = topic.code;
+            document.getElementById("terminal").innerText = "A kimenet itt jelenik meg... Kattints a Futtatás gombra!";
+            document.getElementById("feedback").className = "feedback";
+            
+            const qc = document.getElementById("quiz-container");
+            qc.innerHTML = "";
+            const isGoodFirst = Math.random() > 0.5;
+            const btn1 = createQuizBtn(topic.good, true, topic.goodMsg);
+            const btn2 = createQuizBtn(topic.bad, false, topic.badMsg);
+            qc.appendChild(isGoodFirst ? btn1 : btn2);
+            qc.appendChild(isGoodFirst ? btn2 : btn1);
+            
+            document.getElementById("anim-container").innerHTML = '<div style="color:gray;">Kattints az Animáció Indítása gombra!</div>';
+            if (id === "hanoi") updateHanoi();
+        }
+
+        function createQuizBtn(text, isGood, msg) {
+            const btn = document.createElement("button");
+            btn.className = "quiz-btn"; btn.innerText = text;
+            btn.onclick = () => {
+                const fb = document.getElementById("feedback");
+                fb.innerText = msg; fb.className = "feedback " + (isGood ? "success" : "error");
+            };
+            return btn;
+        }
+
+        function updateHanoi() {
+            if (currentTopicId !== "hanoi") return;
+            
+            isAnimating = false; 
+            animationId++; 
+            
+            const val = document.getElementById("korongok").value;
+            document.getElementById("code-editor").value = topics["hanoi"].code.replace(/n = \d+/, 'n = ' + val);
+            document.getElementById("anim-container").innerHTML = '<div style="color:gray;">Kattints az Animáció Indítása gombra!</div>';
+        }
+
+        function copyCode() {
+            navigator.clipboard.writeText(document.getElementById("code-editor").value).then(() => alert("Kód másolva!"));
+        }
+
+        function runCode() {
+            const prog = document.getElementById("code-editor").value;
+            const term = document.getElementById("terminal");
+            term.innerText = "Futtatás folyamatban...\n\n";
+
+            Sk.pre = "terminal";
+            Sk.configure({
+                output: function(text) { term.innerText += text; },
+                read: function(x) {
+                    if (Sk.builtinFiles === undefined || Sk.builtinFiles["files"][x] === undefined)
+                        throw "File not found: '" + x + "'";
+                    return Sk.builtinFiles["files"][x];
+                }
+            });
+
+            var myPromise = Sk.misceval.asyncToPromise(function() {
+                return Sk.importMainWithBody("<stdin>", false, prog, true);
+            });
+
+            myPromise.catch(function(err) {
+                term.innerText += "\nHiba történt: " + err.toString();
+            });
+        }
+
+        async function startAnimation() {
+            if (isAnimating) return;
+            isAnimating = true;
+            let currentAnimId = ++animationId;
+            const container = document.getElementById("anim-container");
+            container.innerHTML = "";
+
+            try {
+                if (currentTopicId === "sort") {
+
+                    container.innerHTML = `
+                        <div id="sort_bar_container" style="display: flex; align-items: flex-end; height: 100%; padding-bottom: 40px; z-index: 1;"></div>
+                        <div id="sort_status" style="position:absolute; bottom:10px; width:100%; text-align:center; color:#fbbf24; font-weight:bold; font-size:14px; background:rgba(0,0,0,0.6); padding:5px; border-radius:5px; z-index:10;">Kezdődik a rendezés...</div>
+                    `;
+                    
+                    const barContainer = document.getElementById('sort_bar_container');
+                    const setStatus = (txt) => { const el = document.getElementById('sort_status'); if(el) el.innerText = txt; }
+                    
+                    let arr = [5, 2, 9, 1, 6];
+                    arr.forEach(v => {
+                        let b = document.createElement('div'); 
+                        b.className = 'bar'; 
+                        b.style.height = (v*15+20)+'px'; 
+                        b.innerText = v;
+                        barContainer.appendChild(b);
+                    });
+                    
+                    let bars = barContainer.children;
+                    await sleep(1500);
+
+                    for(let i=0; i<arr.length; i++) {
+                        for(let j=0; j<arr.length-i-1; j++) {
+                            if(currentAnimId !== animationId) return;
+                            
+                            setStatus(`Összehasonlítás: ${arr[j]} és ${arr[j+1]}`);
+                            bars[j].style.background = '#ef4444'; 
+                            bars[j+1].style.background = '#ef4444';
+                            await sleep(1500); // Kényelmesen olvasható szünet
+                            
+                            if(arr[j] > arr[j+1]) {
+                                setStatus(`A(z) ${arr[j]} nagyobb, mint ${arr[j+1]}, ezért csere!`);
+                                let temp = arr[j]; arr[j] = arr[j+1]; arr[j+1] = temp;
+                                barContainer.insertBefore(bars[j+1], bars[j]);
+                                await sleep(2000); // Szünet a csere olvasásához
+                            } else {
+                                setStatus(`A(z) ${arr[j]} kisebb vagy egyenlő, mint ${arr[j+1]}, maradnak a helyükön.`);
+                                await sleep(2000); // Szünet az olvasáshoz
+                            }
+                            
+                            bars[j].style.background = '#3b82f6'; 
+                            bars[j+1].style.background = '#3b82f6';
+                        }
+                        if (bars[arr.length-i-1]) {
+                            bars[arr.length-i-1].style.background = '#4ade80';
+                            setStatus(`A(z) ${arr[arr.length-i-1]} a végleges helyére került.`);
+                            await sleep(2000);
+                        }
+                    }
+                    setStatus("A lista sikeresen rendezve lett!");
+                } 
+                else if (currentTopicId === "greedy") {
+                    container.innerHTML = '<div style="position:absolute; top:10px;">Cél: 387 | Eddig: <span id="g-sum" style="color:#4ade80; font-weight:bold;">0</span></div><div id="c-box" style="display:flex; flex-wrap:wrap; width:80%; height:120px; border:2px dashed #64748b; border-radius:10px; padding:10px; margin-top:20px; align-items:center; justify-content:center;"></div>';
+                    let coins = [200, 100, 50, 20, 10, 5, 2];
+                    let sum = 0;
+                    for(let c of coins) {
+                        if(currentAnimId !== animationId) return;
+                        let cDiv = document.createElement('div'); cDiv.className = 'coin'; cDiv.innerText = c;
+                        document.getElementById('c-box').appendChild(cDiv);
+                        await sleep(300);
+                        cDiv.style.opacity = 1; cDiv.style.transform = 'scale(1)';
+                        sum += c; document.getElementById('g-sum').innerText = sum;
+                        await sleep(1000); // Enyhe lassítás az érméknél
+                    }
+                }
+                else if (currentTopicId === "bfs") {
+                    container.innerHTML = `
+                        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:0;">
+                            <line id="edge_A_B" x1="215" y1="35" x2="135" y2="95" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_A_C" x1="215" y1="35" x2="295" y2="95" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_B_D" x1="135" y1="95" x2="75" y2="155" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_B_E" x1="135" y1="95" x2="195" y2="155" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_C_F" x1="295" y1="95" x2="355" y2="155" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_E_K" x1="195" y1="155" x2="255" y2="215" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                        </svg>
+                        <div class="node" id="bfs_A" style="top:20px; left:200px; z-index:1;">A</div>
+                        <div class="node" id="bfs_B" style="top:80px; left:120px; z-index:1;">B</div>
+                        <div class="node" id="bfs_C" style="top:80px; left:280px; z-index:1;">C</div>
+                        <div class="node" id="bfs_D" style="top:140px; left:60px; z-index:1;">D</div>
+                        <div class="node" id="bfs_E" style="top:140px; left:180px; z-index:1;">E</div>
+                        <div class="node" id="bfs_F" style="top:140px; left:340px; z-index:1;">F</div>
+                        <div class="node" id="bfs_K" style="top:200px; left:220px; width:70px; border-radius:10px; z-index:1;">Kijárat</div>
+                        <div id="bfs_status" style="position:absolute; bottom:10px; width:100%; text-align:center; color:#fbbf24; font-weight:bold; font-size:14px; background:rgba(0,0,0,0.6); padding:5px; border-radius:5px;"></div>
+                    `;
+
+                    const setStatus = (txt) => { const el = document.getElementById('bfs_status'); if(el) el.innerText = txt; }
+                    const colorObj = (id, color, isEdge=false) => { 
+                        const el = document.getElementById(id); 
+                        if(!el) return;
+                        if(isEdge) el.style.stroke = color; 
+                        else el.style.background = color; 
+                    }
+
+                    let layers = [
+                        { nodes: ['bfs_A'], edges: [], msg: "1. szint: Kezdés az 'A' csúcsból (0. réteg)" },
+                        { nodes: ['bfs_B', 'bfs_C'], edges: ['edge_A_B', 'edge_A_C'], msg: "2. szint: Az 'A' szomszédjai (1. réteg)" },
+                        { nodes: ['bfs_D', 'bfs_E', 'bfs_F'], edges: ['edge_B_D', 'edge_B_E', 'edge_C_F'], msg: "3. szint: B és C feltáratlan szomszédjai (2. réteg)" },
+                        { nodes: ['bfs_K'], edges: ['edge_E_K'], msg: "4. szint: Megvan a Kijárat!" }
+                    ];
+
+                    for(let l of layers) {
+                        if(currentAnimId !== animationId) return;
+                        setStatus(l.msg);
+                        for(let id of l.nodes) colorObj(id, '#f59e0b');
+                        for(let id of l.edges) colorObj(id, '#f59e0b', true);
+                        await sleep(2500); // Megnövelt várakozás olvasáshoz
+                        
+                        if(currentAnimId !== animationId) return;
+                        for(let id of l.nodes) colorObj(id, '#3b82f6');
+                        for(let id of l.edges) colorObj(id, '#3b82f6', true);
+                    }
+
+                    if(currentAnimId !== animationId) return;
+                    setStatus("A legrövidebb út megtalálva! (Piros vonalakkal jelölve)");
+                    
+                    ['bfs_A', 'bfs_B', 'bfs_E', 'bfs_K'].forEach(id => colorObj(id, '#4ade80'));
+                    ['edge_A_B', 'edge_B_E', 'edge_E_K'].forEach(id => colorObj(id, '#ef4444', true));
+                }
+                else if (currentTopicId === "dfs") {
+                    container.innerHTML = `
+                        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:0;">
+                            <line id="edge_1_2" x1="220" y1="50" x2="120" y2="120" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_1_3" x1="220" y1="50" x2="320" y2="120" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_2_4" x1="120" y1="120" x2="120" y2="190" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <line id="edge_4_1" x1="120" y1="190" x2="220" y2="50" stroke="#334155" stroke-width="3" stroke-dasharray="5,5" style="transition: 0.5s;" />
+                        </svg>
+                        <div class="node" id="dfs_1" style="top:30px; left:200px; z-index:1;">1</div>
+                        <div class="node" id="dfs_2" style="top:100px; left:100px; z-index:1;">2</div>
+                        <div class="node" id="dfs_3" style="top:100px; left:300px; z-index:1;">3</div>
+                        <div class="node" id="dfs_4" style="top:170px; left:100px; z-index:1;">4</div>
+                        <div id="dfs_status" style="position:absolute; bottom:10px; width:100%; text-align:center; color:#fbbf24; font-weight:bold; font-size:14px; background:rgba(0,0,0,0.6); padding:5px; border-radius:5px;"></div>
+                    `;
+                    
+                    const setStatus = (txt) => { const el = document.getElementById('dfs_status'); if(el) el.innerText = txt; }
+                    const colorObj = (id, color, isEdge=false) => { 
+                        const el = document.getElementById(id); 
+                        if(!el) return;
+                        if(isEdge) el.style.stroke = color; 
+                        else el.style.background = color; 
+                    }
+
+                    if(currentAnimId !== animationId) return;
+                    setStatus("Kezdés az 1-es csúcsból");
+                    colorObj("dfs_1", "#ef4444");
+                    await sleep(4000); // Megnövelt várakozás olvasáshoz
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("1-esből indulunk a legmélyebbre: irány a 2-es csúcs!");
+                    colorObj("edge_1_2", "#ef4444", true);
+                    colorObj("dfs_2", "#ef4444");
+                    await sleep(4000);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("2-esből tovább megyünk mélyre: irány a 4-es csúcs!");
+                    colorObj("edge_2_4", "#ef4444", true);
+                    colorObj("dfs_4", "#ef4444");
+                    await sleep(4000);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("4-esből a titkos úton az 1-esbe... de ott már jártunk!");
+                    colorObj("edge_4_1", "#ef4444", true);
+                    await sleep(4000);
+                    if(currentAnimId !== animationId) return;
+                    colorObj("edge_4_1", "#475569", true);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("Zsákutca! Visszalépés a 4-esből...");
+                    colorObj("dfs_4", "#475569");
+                    colorObj("edge_2_4", "#475569", true);
+                    await sleep(4000);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("A 2-esből sincs új felfedezetlen út. Visszalépés az 1-esbe...");
+                    colorObj("dfs_2", "#475569");
+                    colorObj("edge_1_2", "#475569", true);
+                    await sleep(4000);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("Az 1-esből most megpróbáljuk a másik ágat: 3-as csúcs");
+                    colorObj("edge_1_3", "#ef4444", true);
+                    colorObj("dfs_3", "#ef4444");
+                    await sleep(4000);
+                    
+                    if(currentAnimId !== animationId) return;
+                    setStatus("Bejárás kész! (Minden felderített csúcs zöld)");
+                    for(let i=1; i<=4; i++) {
+                        colorObj('dfs_' + i, '#4ade80');
+                    }
+                }
+                else if (currentTopicId === "dijkstra") {
+                    container.innerHTML = `
+                        <svg style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:0;">
+                            <!-- Föld -> X (1) -->
+                            <line id="edge_F_X" x1="75" y1="75" x2="185" y2="45" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <text x="120" y="45" fill="#f8fafc" font-weight="bold" font-size="16px">1</text>
+                            
+                            <!-- Föld -> Y (10) -->
+                            <line id="edge_F_Y" x1="75" y1="75" x2="185" y2="155" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <text x="100" y="145" fill="#f8fafc" font-weight="bold" font-size="16px">10</text>
+                            
+                            <!-- X -> Mars (100) -->
+                            <line id="edge_X_M" x1="195" y1="45" x2="335" y2="75" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <text x="260" y="45" fill="#f8fafc" font-weight="bold" font-size="16px">100</text>
+                            
+                            <!-- Y -> Mars (5) -->
+                            <line id="edge_Y_M" x1="195" y1="155" x2="335" y2="75" stroke="#334155" stroke-width="3" style="transition: 0.5s;" />
+                            <text x="260" y="145" fill="#f8fafc" font-weight="bold" font-size="16px">5</text>
+                        </svg>
+                        <div class="node" id="dij_F" style="top:50px; left:30px; z-index:1;">Föld<br>∞</div>
+                        <div class="node" id="dij_X" style="top:20px; left:160px; z-index:1;">X_bolygó<br>∞</div>
+                        <div class="node" id="dij_Y" style="top:130px; left:160px; z-index:1;">Y_bolygó<br>∞</div>
+                        <div class="node" id="dij_M" style="top:50px; left:320px; z-index:1;">Mars<br>∞</div>
+                        <div id="dij_status" style="position:absolute; bottom:10px; width:100%; text-align:center; color:#fbbf24; font-weight:bold; font-size:14px; background:rgba(0,0,0,0.6); padding:5px; border-radius:5px;"></div>
+                    `;
+
+                    const setStatus = (txt) => { const el = document.getElementById('dij_status'); if(el) el.innerText = txt; }
+                    const colorObj = (id, color, isEdge=false) => { 
+                        const el = document.getElementById(id); 
+                        if(!el) return;
+                        if(isEdge) el.style.stroke = color; 
+                        else el.style.background = color; 
+                    }
+
+                    await sleep(500);
+                    if(currentAnimId !== animationId) return;
+                    
+                    let nF = document.getElementById('dij_F'); let nX = document.getElementById('dij_X');
+                    let nY = document.getElementById('dij_Y'); let nM = document.getElementById('dij_M');
+                    
+                    // 1. Lépés
+                    setStatus("1. A kezdőpont (Föld) távolsága 0, a többi bolygó még ismeretlen (∞).");
+                    nF.innerHTML = "Föld<br>0"; 
+                    colorObj('dij_F', '#f59e0b');
+                    await sleep(4000); // Megnövelt várakozás
+                    
+                    // 2. Lépés
+                    if(currentAnimId !== animationId) return;
+                    setStatus("2. A Földből elérhető X_bolygó (költség: 0+1) és Y_bolygó (költség: 0+10). Frissítés!");
+                    colorObj('edge_F_X', '#f59e0b', true);
+                    colorObj('edge_F_Y', '#f59e0b', true);
+                    nX.innerHTML = "X_bolygó<br>1"; nX.style.background = "#3b82f6";
+                    nY.innerHTML = "Y_bolygó<br>10"; nY.style.background = "#3b82f6";
+                    await sleep(4000);
+                    colorObj('dij_F', '#4ade80'); 
+                    colorObj('edge_F_X', '#334155', true);
+                    colorObj('edge_F_Y', '#334155', true);
+                    
+                    // 3. Lépés
+                    if(currentAnimId !== animationId) return;
+                    setStatus("3. A legolcsóbb út az X_bolygó (1). Innen a Mars elérhető (1+100=101) áron.");
+                    colorObj('dij_X', '#f59e0b');
+                    colorObj('edge_X_M', '#f59e0b', true);
+                    nM.innerHTML = "Mars<br>101"; nM.style.background = "#3b82f6";
+                    await sleep(4000);
+                    colorObj('dij_X', '#475569'); 
+                    colorObj('edge_X_M', '#334155', true);
+                    
+                    // 4. Lépés
+                    if(currentAnimId !== animationId) return;
+                    setStatus("4. Következő legolcsóbb az Y_bolygó (10). Innen a Mars 10+5=15. Ez jobb, mint 101!");
+                    colorObj('dij_Y', '#f59e0b');
+                    colorObj('edge_Y_M', '#f59e0b', true);
+                    nM.innerHTML = "Mars<br>15"; nM.style.background = "#f59e0b";
+                    await sleep(4000);
+                    
+                    // Végeredmény
+                    if(currentAnimId !== animationId) return;
+                    setStatus("Kész! A legolcsóbb út a Marsra (15) megtalálva (Föld -> Y_bolygó -> Mars).");
+                    colorObj('dij_Y', '#4ade80');
+                    colorObj('dij_M', '#4ade80');
+                    colorObj('edge_F_Y', '#4ade80', true);
+                    colorObj('edge_Y_M', '#4ade80', true);
+                }
+                else if (currentTopicId === "hanoi") {
+                    let n = parseInt(document.getElementById('korongok').value);
+                    container.innerHTML = '<div class="peg" id="pA"></div><div class="peg" id="pB"></div><div class="peg" id="pC"></div>';
+                    let colors = ['#f87171', '#facc15', '#4ade80', '#60a5fa', '#c084fc'];
+                    let pA = document.getElementById('pA');
+                    for(let i=n; i>=1; i--) {
+                        let d = document.createElement('div'); d.className = 'disk';
+                        d.style.width = (i*15 + 25) + 'px'; d.style.background = colors[i-1];
+                        pA.appendChild(d);
+                    }
+                    
+                    async function hanoiAnim(n, from, to, aux) {
+                        if(currentAnimId !== animationId) return;
+                        if(n === 1) {
+                            let pf = document.getElementById('p'+from);
+                            let pt = document.getElementById('p'+to);
+                            if(pf && pt && pf.lastChild) {
+                                pt.appendChild(pf.lastChild);
+                            }
+                            await sleep(1000 - (parseInt(document.getElementById('korongok').value)*100)); // Picit lassítva a korongmozgatás is
+                            return;
+                        }
+                        await hanoiAnim(n-1, from, aux, to);
+                        await hanoiAnim(1, from, to, aux);
+                        await hanoiAnim(n-1, aux, to, from);
+                    }
+                    await sleep(500);
+                    await hanoiAnim(n, 'A', 'C', 'B');
+                }
+            } catch (error) {
+                console.error("Animáció közbeni hiba:", error);
+            } finally {
+                if (currentAnimId === animationId) {
+                    isAnimating = false;
+                }
+            }
+        }
+    </script>
+</body>
+</html>
